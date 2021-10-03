@@ -1,0 +1,23 @@
+[33mcommit ff179ea81fdf3621b14322b5a128cadc8ab30e7a[m[33m ([m[1;36mHEAD -> [m[1;32mutil[m[33m)[m
+Author: Matus Vetrik <xvetri@stuba.sk>
+Date:   Sun Oct 3 21:40:46 2021 +0200
+
+    feat: implementation of find
+
+[33mcommit af0ffee12fc27c74591e2d4e495756b635d831e3[m[33m ([m[1;31morigin/util[m[33m)[m
+Author: Matus Vetrik <xvetri@stuba.sk>
+Date:   Sat Oct 2 18:46:58 2021 +0200
+
+    feat: uptime implementation
+
+[33mcommit 6bb4e0840366a8b64a4b626dbe9cbe035893a09a[m
+Author: Matus Vetrik <xvetri@stuba.sk>
+Date:   Tue Sep 28 11:05:48 2021 +0200
+
+    feat: implement pingpong
+
+[33mcommit d550c2c6d5bf6895b4affe103a07533f4680aa95[m
+Author: Matus Vetrik <xvetri@stuba.sk>
+Date:   Tue Sep 28 09:21:17 2021 +0200
+
+    sleep implementation

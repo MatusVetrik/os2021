@@ -1,4 +1,4 @@
-// tu bude implementacia sleep
+//  pingpong implementation
 
 #include "kernel/types.h"
 #include "kernel/stat.h"
@@ -19,12 +19,15 @@ int main(int argc, char *argv[] ){
     read(to_child[0],&received,1);
     printf("%d: received ping\n",getpid());
     write(to_parent[1],"x",1);
-  }else{
+  }else if(pid > 0){
     //parent
     write(to_child[1],"b",1);
     char received;
     read(to_parent[0],&received,1);
     printf("%d: received pong\n",getpid());
+  }else{
+    fprintf(2,"error: negative pid: %d\n",getpid());
   }
+
   exit(0);
 }
