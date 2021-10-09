@@ -657,3 +657,16 @@ procdump(void)
     printf("\n");
   }
 }
+
+//return number of processes 
+uint64 getnprocesses(void){
+  uint64 count = 0;
+  struct proc *p;					//pointer to struct of processes
+  for(p = proc; p < &proc[NPROC]; p++){	//controling running processes until reaching maximum number of processes(NPROC =64)
+    if(p->state !=UNUSED){		
+      count++;
+    }  
+  }
+  return count;  
+} 
+
