@@ -81,7 +81,7 @@ kalloc(void)
   return (void*)r;
 }
 
-//return amount of free memory times 4096
+//return amount of free memory times 4096(page)
 uint64 getfreememory(void){
   uint64 count = 0; 		//counting amount of free memory
   struct run *r;
