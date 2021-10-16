@@ -1,0 +1,7 @@
+1.
+	uptime() can be optimalized because this function have same arguments and return value as ugetpid() 
+2.	
+	3.4 picture relation: function printing adresses from stack 
+	page 0: PTEs in the root page-table page
+	page 1: PTEs in a page-table page in the next level
+	page 2: PTEs in a page-table page in the final levels
