@@ -432,3 +432,32 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+//implementation of function for printing table pages
+//3.4 picture relation: function printing adresses from stack 
+//page 0: PTEs in the root page-table page
+//page 1: PTEs in a page-table page in the next level
+//page 2: PTEs in a page-table page in the final level
+void vmprintpage(pagetable_t pagetable, int level){
+  // there are 2^9 = 512 PTEs in a page table.  
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];		
+    if((pte & PTE_V)){	//printing only valid pages ,PTE_V indicates if the PTE is present
+      for(int i=0; i< level; i++){	//printing depth of pte   
+      	printf(".. ");
+      }
+      printf("..");	//last level of depth without space
+      printf("%d: pte %p pa %p\n",i, pte, PTE2PA(pte));	 //index of entry, bits of page table entries ,physical address of pte
+      if((pte & (PTE_R|PTE_W|PTE_X)) == 0){	//if pte is still valid, recursive call for higher level 
+     	uint64 child = PTE2PA(pte);
+     	vmprintpage((pagetable_t)child,level+1);
+      }
+    }
+  }
+}
+
+void vmprint(pagetable_t pagetable){
+  printf("page table %p\n",pagetable);	
+  vmprintpage(pagetable,0);
+}
+

@@ -116,6 +116,8 @@ exec(char *path, char **argv)
   p->trapframe->sp = sp; // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);
 
+  if(p->pid == 1) vmprint(p->pagetable);   //	vmprint only executed if current process is first process
+
   return argc; // this ends up in a0, the first argument to main(argc, argv)
 
  bad:
