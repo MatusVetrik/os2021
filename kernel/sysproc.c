@@ -75,7 +75,7 @@ sys_sleep(void)
   return 0;
 }
 
-
+/*
 #ifdef LAB_PGTBL
 int
 sys_pgaccess(void)
@@ -84,6 +84,7 @@ sys_pgaccess(void)
   return 0;
 }
 #endif
+*/
 
 uint64
 sys_kill(void)
@@ -106,4 +107,40 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+
+uint64 sys_pgaccess(void)
+{
+ uint64 start;			//va of page start
+ int npages;			//number of pages
+ uint64 bitmask_user_address;	//user bitmask address, value will be represented by bitmask
+ 
+ uint64 bitmask_kernel = 0;	//kernel bitmask
+ 
+ //passing arguments to parameters
+ if(argaddr(0, &start) < 0) return -1;
+ if(argint(1, &npages) < 0) return -1;
+ if(argaddr(2, &bitmask_user_address) < 0) return -1;
+ 
+ // limit of maximal pages to size of bitmask 
+ if(npages > 64) npages = 64;
+ 
+ for(int i = 0; i < npages; i++){
+   pte_t *pte = walk(myproc()->pagetable, start, 0);
+  
+   //checking validity of arguments
+   if(*pte == 0) return -1;
+   if(PTE_A == 0) return -1;	
+
+   if(*pte & PTE_A){
+     bitmask_kernel |= 1 << i;
+     *pte &= ~PTE_A;
+   }
+   start+= PGSIZE;	//moving to the next page
+ }
+ //copying temporary buffer in kernel to user 
+ if(copyout(myproc()->pagetable, bitmask_user_address, (char *)&bitmask_kernel, sizeof(bitmask_kernel))) return -1;
+ 
+ return 0;
 }

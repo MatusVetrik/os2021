@@ -434,10 +434,6 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 }
 
 //implementation of function for printing table pages
-//3.4 picture relation: function printing adresses from stack 
-//page 0: PTEs in the root page-table page
-//page 1: PTEs in a page-table page in the next level
-//page 2: PTEs in a page-table page in the final level
 void vmprintpage(pagetable_t pagetable, int level){
   // there are 2^9 = 512 PTEs in a page table.  
   for(int i = 0; i < 512; i++){
