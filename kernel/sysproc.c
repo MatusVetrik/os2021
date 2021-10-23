@@ -119,5 +119,5 @@ uint64 sys_sigreturn(void){
   struct proc *p  = myproc();
   p->timer = 0;
   memmove((char*)p->trapframe,(char*)p->trap_alarm,512);	//moving data(one page=>512b from alarm trapframe to trapframe 
-  return 0; 
+  return p->trapframe->a0;					//in reigster a0 is saved return value of sigreturn so return value is not overwritten
 }
