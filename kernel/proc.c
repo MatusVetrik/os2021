@@ -119,6 +119,8 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->tick_counter = 0;		//inicialization of tick counter to 0 for new call
+  p->alarm_handler = -1;	//for this time none handler has been set  
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){

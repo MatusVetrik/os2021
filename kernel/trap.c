@@ -77,9 +77,20 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2){
+    if(p->alarm_handler != -1){					//only when handler is avaiable
+      p->tick_counter++;					//increasing time in ticks since last call 
+      if(p->tick_counter >= p->alarm_interval){ 		//when tick counter reaches value of alarm interval, alarm will be called
+        if(!p->timer){						
+          memmove((char*)p->trap_alarm,(char*)p->trapframe,512);//move data(page) to trap_alarm for saving them
+          p->trapframe->epc = p->alarm_handler;			//epc register have stored address to which syscall will be return
+	  p->timer = 1;          
+        }
+      }
+       
+    }
     yield();
-
+  }
   usertrapret();
 }
 
