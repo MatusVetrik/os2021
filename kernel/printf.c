@@ -132,3 +132,18 @@ printfinit(void)
   initlock(&pr.lock, "pr");
   pr.locking = 1;
 }
+
+void
+backtrace(void)
+{
+  printf("backtrace:\n");
+  
+  uint64 frameptr = r_fp();		//current frame pointer
+  
+  //printing while frame pointer is not at the end of the page
+  while(PGROUNDDOWN(frameptr) != frameptr){		
+    printf("%p\n", *((uint64 *)(frameptr - 8)));	//printing return address at offset(-8) 
+    frameptr = *((uint64 *)(frameptr - 16));		//assigning to frame pointer from saved frame pointer at offset(-16) 
+  }
+}
+
