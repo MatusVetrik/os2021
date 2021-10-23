@@ -1,0 +1,63 @@
+Ktoré registre obsahujú argumenty funkcií? V ktorom registri je napríklad uložené číslo 13 (argument funkcie printf())?
+
+	Argumenty funkcii obsahuju registre a0 az a7.
+
+	void main(void) {
+	  printf("%d %d\n", f(8)+1, 13);
+	  exit(0);
+	}
+	"%d %d\n" a0
+	f(8)+1	  a1
+	13	  a2
+	
+--------------------------------------------------------------------------------------------------
+
+Kde je volanie funkcie f() z funkcie main()? Kde je volanie funkcie g()? (Pomôcka: Kompilátor môže funkcie inlinovať).
+
+	Volanie f() v call.asm:
+	26:	45b1           li	a1,12
+	f() bola zavolana ako druhy argument funkcie printf() 
+
+--------------------------------------------------------------------------------------------------
+
+Na ktorej adrese sa nachádza funkcia printf()?
+
+	000000000000638 na riadku 1108 v call.asm
+
+--------------------------------------------------------------------------------------------------
+
+Aká hodnota je v registri ra hneď po jalr do funkcie printf() vo funkcii main()?
+
+  Hodnota registra ra je : "3a:	00000097          	auipc	ra,0x0" 
+
+--------------------------------------------------------------------------------------------------
+
+Spustite tento kód:
+
+unsigned int i = 0x00646c72;
+printf("H%x Wo%s", 57616, &i);
+
+Aký je jeho výstup? Tu je ASCII tabuľka, ktorá mapuje bajty na znaky.
+
+	Vystup je "He110 World"
+
+--------------------------------------------------------------------------------------------------
+
+Aký bude výstup závisí od toho, či je architektúra RISC-V little-endian. Ak by bol RISC-V big-endian, akú hodnotu by ste museli priradiť premennej i, aby bol výstup totožný? 
+
+Museli by sme pridat hodnotu i = 0x726c6400.	Pri little-endian sa hodnota cita od konca pri com big-edian od zaciatku => obratime hodnotu po bajtoch
+
+--------------------------------------------------------------------------------------------------
+
+Bolo by tiež potrebné zmeniť hodnotu 57616?
+
+Nie.
+
+--------------------------------------------------------------------------------------------------
+
+Čo bude na výpise za 'y=' v nižšie uvedenom kóde? (poznámka: nie je to žiadna špecifická hodnota.) Prečo sa to deje?
+
+printf("x=%d y=%d", 3);
+
+	Hodnota v registri a2.
+	Pretoze do registru dva nebola priradena ziadna specificka hodnota. 
