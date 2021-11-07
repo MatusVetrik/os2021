@@ -65,6 +65,13 @@ usertrap(void)
     intr_on();
 
     syscall();
+  } else if(r_scause() == 15){
+    if(r_stval()>=MAXVA){	//stval register cant be bigger than MAXVA
+      p->killed = 1;
+    }
+    if(uvmcow(p->pagetable, r_stval()) < 0){	//uvmcow contorling validity of stval register, returns 0 else returns -1 and process is killed 
+      p->killed = 1;
+    }
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {

@@ -18,16 +18,63 @@ struct run {
   struct run *next;
 };
 
+//manager of physical memory for allocating
 struct {
   struct spinlock lock;
   struct run *freelist;
+  uint64 *cntref;	//array where every item respond for one frame
 } kmem;
 
+
+//decrement amount of referenices
+uint64 dec_ref(void* pa){
+  acquire(&kmem.lock);
+  uint64 pa_index = PA2IND(pa);		//parsing physical address to index
+  if(kmem.cntref[pa_index] == 0){	//dec_ref cant be use for address with 0 referencies
+    panic("dec_ref: cntref zero");
+  }
+  kmem.cntref[pa_index]--;		//decrementing amount of referncies
+  int ret = kmem.cntref[pa_index];
+  release(&kmem.lock);
+  return ret;		//returning amount of referenices
+
+} 
+
+//increment amount of referenices
+void inc_ref(void* pa){
+  acquire(&kmem.lock);
+  uint64 pa_index = PA2IND(pa);
+  if(pa_index>=MAXVA){
+    panic("dec_ref: address out of limit");
+  } 
+  kmem.cntref[pa_index]++;	//increaseing amount of referncies
+  release(&kmem.lock);
+}
+
+//increment ref count whithout locking
+static void inc_ref_internal(void *pa){
+  if(PA2IND(pa)>=MAXVA){
+    panic("inc_ref_iternal: address out of limit");
+  }
+  kmem.cntref[PA2IND(pa)]++;
+}
+
+//initialisation of allocator
 void
 kinit()
 {
+  int frames = 0;			//count of avaiable frames
+  uint64 addr = PGROUNDUP((uint64)end);
+  
+  kmem.cntref = (uint64*)addr;
+  while(addr < PHYSTOP){	//walking through free memory and for every frame in cntref is count of referencies set to one
+    kmem.cntref[PA2IND(addr)] = 1;
+    addr += PGSIZE;
+    frames++;
+  }
+  
   initlock(&kmem.lock, "kmem");
-  freerange(end, (void*)PHYSTOP);
+  freerange(kmem.cntref+frames, (void*)PHYSTOP);	//free range of physical memory
 }
 
 void
@@ -47,18 +94,23 @@ void
 kfree(void *pa)
 {
   struct run *r;
+  
+  //if ref count is equal 0 , continue without iteration
+  if(dec_ref(pa) != 0)
+    return;
 
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
 
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
-
+    
   r = (struct run*)pa;
 
   acquire(&kmem.lock);
   r->next = kmem.freelist;
   kmem.freelist = r;
+    
   release(&kmem.lock);
 }
 
@@ -72,11 +124,13 @@ kalloc(void)
 
   acquire(&kmem.lock);
   r = kmem.freelist;
-  if(r)
+  if(r){
     kmem.freelist = r->next;
-  release(&kmem.lock);
-
-  if(r)
+    inc_ref_internal(r);
     memset((char*)r, 5, PGSIZE); // fill with junk
+  }
+  release(&kmem.lock);
+  
   return (void*)r;
 }
+
