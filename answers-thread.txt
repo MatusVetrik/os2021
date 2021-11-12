@@ -1,0 +1,4 @@
+
+Prečo v tabuľke chýbali kľúče, keď sme použili dve vlákna, ale všetko bolo v poriadku pri jednom vlákne? Nájdite postupnosť udalostí v dvoch vláknach, ktoré spôsobia takýto problém. Odpoveď s vysvetlením napíšte do answers-thread.txt.
+
+	Postupnost udalosti musi byt ./ph 1 ./ph 2 ./ph 1 ./ph 2 , 2 vlakna prepisu hodnoty pri pouzivani 1 vlakna preto chybaju kluce 		
