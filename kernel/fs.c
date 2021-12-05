@@ -380,24 +380,56 @@ bmap(struct inode *ip, uint bn)
   uint addr, *a;
   struct buf *bp;
 
+  //checking if block index is in direct blocks, bn<11
   if(bn < NDIRECT){
-    if((addr = ip->addrs[bn]) == 0)
+    if((addr = ip->addrs[bn]) == 0) //if address of current block is null, then alloc block
       ip->addrs[bn] = addr = balloc(ip->dev);
-    return addr;
+    return addr; 
   }
-  bn -= NDIRECT;
+  bn -= NDIRECT; //find index in INDIRECT block
 
   if(bn < NINDIRECT){
     // Load indirect block, allocating if necessary.
-    if((addr = ip->addrs[NDIRECT]) == 0)
+    if((addr = ip->addrs[NDIRECT]) == 0) // chcecking existence of indirect block
       ip->addrs[NDIRECT] = addr = balloc(ip->dev);
-    bp = bread(ip->dev, addr);
-    a = (uint*)bp->data;
-    if((addr = a[bn]) == 0){
+    bp = bread(ip->dev, addr);  //reading block
+    a = (uint*)bp->data;  //reading data
+    if((addr = a[bn]) == 0){  // chcecking existence of data block at address
       a[bn] = addr = balloc(ip->dev);
-      log_write(bp);
+      log_write(bp); //write to block
     }
-    brelse(bp);
+    brelse(bp);  //release
+    return addr;
+  }
+  
+  bn -= NINDIRECT; //find index in INDIRECT block
+
+  if(bn < NDINDIRECT){
+    // Load doubly indirect block, allocating if necessary.
+    if((addr = ip->addrs[NDIRECT+1]) == 0) // chcecking existence of indirect block
+      ip->addrs[NDIRECT+1] = addr = balloc(ip->dev);
+    bp = bread(ip->dev, addr);  //reading block
+    a = (uint*)bp->data;  //reading data
+    
+    uint dind_index= bn / NINDIRECT;
+    uint ind_index= bn % NINDIRECT;
+    
+    // Load dindirect block, allocating if necessary.
+    if((addr = a[dind_index]) == 0){  // chcecking existence of data block at address
+      a[dind_index] = addr = balloc(ip->dev);
+      log_write(bp); //write to block
+    }
+    brelse(bp);  //release
+    
+    bp = bread(ip->dev, addr);  //reading block
+    a = (uint*)bp->data;  //reading data
+    
+    if((addr = a[ind_index]) == 0){  // chcecking existence of data block at address
+      a[ind_index] = addr = balloc(ip->dev);
+      log_write(bp); //write to block
+    }
+    brelse(bp);  //releaSse
+    
     return addr;
   }
 
@@ -410,8 +442,8 @@ void
 itrunc(struct inode *ip)
 {
   int i, j;
-  struct buf *bp;
-  uint *a;
+  struct buf *bp, *bp2;
+  uint *a, *a2;
 
   for(i = 0; i < NDIRECT; i++){
     if(ip->addrs[i]){
@@ -431,7 +463,28 @@ itrunc(struct inode *ip)
     bfree(ip->dev, ip->addrs[NDIRECT]);
     ip->addrs[NDIRECT] = 0;
   }
-
+  
+  //chceking existence of doubley indirect block
+  if(ip->addrs[NDIRECT+1]){
+    bp = bread(ip->dev, ip->addrs[NDIRECT+1]);	//load dindirect block
+    a = (uint*)bp->data;	//load data of block
+    for(j = 0; j < NINDIRECT; j++){	
+      if(a[j]){		//looking for indirect block
+        bp2 = bread(ip->dev,a[j]);
+        a2 = (uint*)bp2->data;
+        for(i = 0; i < NINDIRECT; i++){
+          if(a2[i])
+            bfree(ip->dev, a2[i]);	//free data block
+        }
+        brelse(bp2);
+        bfree(ip->dev, a[j]);
+      }
+    }
+    brelse(bp);
+    bfree(ip->dev, ip->addrs[NDIRECT+1]);
+    ip->addrs[NDIRECT+1] = 0;
+  }
+  
   ip->size = 0;
   iupdate(ip);
 }
