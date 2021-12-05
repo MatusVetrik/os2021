@@ -254,6 +254,9 @@ create(char *path, short type, short major, short minor)
     ilock(ip);
     if(type == T_FILE && (ip->type == T_FILE || ip->type == T_DEVICE))
       return ip;
+    //check if node is symbolic link
+    if (ip->type == T_SYMLINK)
+      return ip;
     iunlockput(ip);
     return 0;
   }
@@ -281,6 +284,36 @@ create(char *path, short type, short major, short minor)
   iunlockput(dp);
 
   return ip;
+}
+
+//recursive function for find files by symbolic links, returns 0 if failed
+struct inode *
+follow_symlink(struct inode * symlink, int depth) {
+  struct inode *ip;	
+  char target[MAXPATH];
+  
+  //if links cycles 
+  if (depth > 10) {
+    return 0;
+  }
+  
+  //symlink targets to final file
+  if (symlink->type != T_SYMLINK) {
+    return symlink;
+  }
+  
+  //reading data from inode, return 0 if symlink or ip size > 0
+  if (readi(symlink, 0, (uint64)target, 0, symlink->size) == 0) {
+    return 0;
+  }
+  
+  iunlockput(symlink); //unlock symlink node and drop ref to an in-memory inode
+  //look for path name
+  if ((ip = namei(target)) == 0) {
+    return 0;
+  }
+  ilock(ip);	//lock node ip
+  return follow_symlink(ip, depth+1);
 }
 
 uint64
@@ -322,6 +355,14 @@ sys_open(void)
     return -1;
   }
 
+  //when file does not exist return -1
+  if (ip->type == T_SYMLINK && !(omode & O_NOFOLLOW)) {
+    if ((ip = follow_symlink(ip, 0)) == 0) {
+      end_op();
+      return -1;
+    }
+  }
+  
   if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
     if(f)
       fileclose(f);
@@ -484,3 +525,24 @@ sys_pipe(void)
   }
   return 0;
 }
+
+//create new symbolic link that points to target file
+uint64
+sys_symlink(void)
+{
+  char target[MAXPATH], path[MAXPATH];
+  struct inode * ip;	//saved path to target
+  
+  //if creation of symbolic link is not doable, return -1
+  if(argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0){
+    return -1;
+  }
+  begin_op(); 
+  ip =  create(path, T_SYMLINK, 0, 0);  //create inode
+  writei(ip, 0, (uint64)target, 0, sizeof(target)); //writing data to inode ip
+  iunlockput(ip);	//ulocking inode and put ref to indoe memory 
+  end_op();
+  return 0;
+}
+
+
