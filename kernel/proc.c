@@ -3,8 +3,12 @@
 #include "memlayout.h"
 #include "riscv.h"
 #include "spinlock.h"
+#include "sleeplock.h"
 #include "proc.h"
 #include "defs.h"
+#include "fcntl.h"
+#include "fs.h"
+#include "file.h"
 
 struct cpu cpus[NCPU];
 
@@ -287,6 +291,15 @@ fork(void)
     release(&np->lock);
     return -1;
   }
+  
+  //to child process is mapped same vma as parent
+  for(int j = 0; j < VMA_NUM; j++){
+    if(p->vma[j].valid == 1){
+      np->vma[j] = p->vma[j];
+      filedup(np->vma[j].f);
+    }
+  } 
+  
   np->sz = p->sz;
 
   // copy saved user registers.
@@ -343,7 +356,17 @@ exit(int status)
 
   if(p == initproc)
     panic("init exiting");
-
+  
+  //unmap all files
+  for(int j = 0; j < VMA_NUM; j++){
+    if(p->vma[j].valid == 1){
+      if(p->vma[j].flags & MAP_SHARED)
+        filewrite(p->vma[j].f, p->vma[j].address, p->vma[j].length);
+      uvmunmap(p->pagetable, p->vma[j].address, p->vma[j].length/PGSIZE, 1);
+     }     
+    p->vma[j].valid = 0;
+  }
+  
   // Close all open files.
   for(int fd = 0; fd < NOFILE; fd++){
     if(p->ofile[fd]){

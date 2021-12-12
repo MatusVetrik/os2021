@@ -5,6 +5,11 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "fcntl.h"
+#include "spinlock.h"
+#include "sleeplock.h"
+#include "proc.h"
+#include "file.h"
 
 /*
  * the kernel's page table.
@@ -175,7 +180,8 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
     if((pte = walk(pagetable, a, 0)) == 0)
       panic("uvmunmap: walk");
     if((*pte & PTE_V) == 0)
-      panic("uvmunmap: not mapped");
+      //panic("uvmunmap: not mapped");
+      continue;
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
     if(do_free){
@@ -309,7 +315,8 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
     if((*pte & PTE_V) == 0)
-      panic("uvmcopy: page not present");
+      //panic("uvmcopy: page not present");
+      continue;
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)
@@ -431,4 +438,37 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+//find empty report of process
+struct vma *
+find_empty_vma(struct proc *p){
+  for(int i=0; i < VMA_NUM; i++){
+    if(p->vma[i].f ==0)
+      return p->vma +i;
+  }
+  return 0;
+}
+
+// find address to map a file
+uint64
+alloc_mmap(struct proc *p){
+  uint64 start = MMAP;
+  for(int i=0; i < VMA_NUM; i++){
+    if(p->vma[i].f != 0)
+      if(p->vma[i].address + p->vma[i].length > start)
+        start = p->vma[i].address + p->vma[i].length;
+  }
+  return start;
+}
+
+//search for correct vma by given address
+struct vma *
+search_vma(struct proc *p, uint64 addr){
+  for(int i=0; i < VMA_NUM; i++){
+    if(p->vma[i].f != 0)
+      if(addr >= p->vma[i].address && addr < p->vma[i].address + p->vma[i].length)
+        return p->vma + i;
+  }
+  return 0;
 }

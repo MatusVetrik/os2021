@@ -3,8 +3,12 @@
 #include "memlayout.h"
 #include "riscv.h"
 #include "spinlock.h"
+#include "sleeplock.h"
 #include "proc.h"
 #include "defs.h"
+#include "fs.h"
+#include "fcntl.h"
+#include "file.h"
 
 struct spinlock tickslock;
 uint ticks;
@@ -65,9 +69,40 @@ usertrap(void)
     intr_on();
 
     syscall();
-  } else if((which_dev = devintr()) != 0){
+  }else if((which_dev = devintr()) != 0){
     // ok
-  } else {
+  }else if(r_scause() == 13 || r_scause() == 15){
+    struct vma *vma = search_vma(myproc(), r_stval());
+    if(vma == 0)
+      exit(-1);
+      
+    //check permissions
+     int permissions = PTE_U;
+    if(vma->prot & PROT_READ)
+      permissions |= PTE_R;
+    if(vma->prot & PROT_WRITE)
+      permissions |= PTE_W;
+  
+    char *mem = kalloc();
+    if(mem == 0)
+      exit(-1);
+    memset(mem, 0, PGSIZE);
+    
+    struct file *f = vma ->f;
+    int r = 0;
+    
+    uint off = PGROUNDDOWN(r_stval()) - vma->address + vma->offset;
+    ilock(f->ip);
+    if((r =readi(f->ip, 0, (uint64)mem, off, PGSIZE)) <= 0){
+      kfree(mem);
+      iunlock(f->ip);  
+      f->off += r;
+    }
+    iunlock(f->ip);
+    //map with correct flags
+    if(mappages(p->pagetable, PGROUNDDOWN(r_stval()), PGSIZE, (uint64)mem, permissions) != 0)
+      exit(-1);
+  }else{
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
