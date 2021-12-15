@@ -103,6 +103,37 @@ e1000_transmit(struct mbuf *m)
   // a pointer so that it can be freed after sending.
   //
   
+  acquire(&e1000_lock);
+  
+  //asking E1000 for the TX ring index where will be next packet  
+  int i = regs[E1000_TDT];
+  struct tx_desc *d = &tx_ring[i];
+
+  //checking if the ring is not overflowing 
+  if ((d->status & E1000_TXD_STAT_DD) == 0) {
+    release(&e1000_lock);
+    return -1; 
+  }
+  //free buffer
+  else if(tx_mbufs[i]) {
+    mbuffree(tx_mbufs[i]); 
+  }
+  
+  //filling descriptor
+  d->addr = (uint64)m->head;
+  d->length = m->len;
+  
+  //seting cmd flag to end of the packet
+  d->cmd = E1000_TXD_CMD_EOP; 
+  
+  //saving pointer to mbuf 
+  tx_mbufs[i] = m; 
+  
+  //new position of the ring
+  regs[E1000_TDT] = (i + 1) % TX_RING_SIZE;
+
+  release(&e1000_lock);
+  
   return 0;
 }
 
@@ -115,6 +146,40 @@ e1000_recv(void)
   // Check for packets that have arrived from the e1000
   // Create and deliver an mbuf for each packet (using net_rx()).
   //
+  
+  //aking for ring index
+  int i = (regs[E1000_RDT] + 1) % RX_RING_SIZE;
+  struct rx_desc* d = &rx_ring[i];
+
+  //while new packet is avaiable
+  while(d->status & E1000_RXD_STAT_DD) {
+    acquire(&e1000_lock);
+
+    struct mbuf* b = rx_mbufs[i];
+    
+    //append data to the end of the buffer
+    mbufput(b, d->length);
+
+    //allocing new buffer
+    rx_mbufs[i]= mbufalloc(0);
+    
+    //setting data pointer to the descriptor 
+    d->addr = (uint64)rx_mbufs[i] -> head;
+    d->status = 0;
+
+    //setting to index of last used descriptor
+    regs[E1000_RDT] = i;
+    
+    release(&e1000_lock);
+
+    //deliver a packet
+    net_rx(b);
+    
+    //index to the next packet
+    i = (regs[E1000_RDT] + 1) % RX_RING_SIZE;
+    d = &rx_ring[i];
+  }
+  
 }
 
 void
